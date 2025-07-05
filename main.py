@@ -6,8 +6,8 @@ import time
 import math
 
 # Wi-Fi credentials
-ssid = 'vahora'
-password = 'vahora123'
+ssid = "rpi-pico"
+password = "range-of-motion"
 
 # Connect to Wi-Fi
 wlan = network.WLAN(network.STA_IF)
@@ -26,9 +26,10 @@ print("Visit http://" + ip)
 i2c = I2C(0, scl=Pin(1), sda=Pin(0))
 sensor = MPU6050(i2c)
 
+
 def get_knee_angle():
     accel = sensor.get_accel_data()
-    ax, ay, az = accel['x'], accel['y'], accel['z']
+    ax, ay, az = accel["x"], accel["y"], accel["z"]
     g = math.sqrt(ax**2 + ay**2 + az**2)
     if g == 0:
         return 0
@@ -37,8 +38,9 @@ def get_knee_angle():
     angle = math.degrees(math.acos(ay_norm))
     return round(angle, 2)
 
+
 # Web server setup
-addr = socket.getaddrinfo('0.0.0.0', 80)[0][-1]
+addr = socket.getaddrinfo("0.0.0.0", 80)[0][-1]
 s = socket.socket()
 s.bind(addr)
 s.listen(1)
@@ -52,13 +54,13 @@ while True:
         request = cl.recv(1024)
         angle = get_knee_angle()
         html = f"""<!DOCTYPE html>
-<html><head><title>Knee Angle</title>
-<meta http-equiv="refresh" content="1">
-</head><body>
-<h1>Knee Flexion Angle</h1>
-<p><strong>{angle}</strong> degrees</p>
-</body></html>"""
-        cl.send('HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n')
+            <html><head><title>Knee Angle</title>
+            <meta http-equiv="refresh" content="1">
+            </head><body>
+            <h1>Knee Flexion Angle</h1>
+            <p><strong>{angle}</strong> degrees</p>
+            </body></html>"""
+        cl.send("HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n")
         cl.send(html)
         cl.close()
     except Exception as e:
