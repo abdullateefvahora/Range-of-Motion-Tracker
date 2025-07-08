@@ -23,9 +23,8 @@ i2c1 = I2C(1, scl=Pin(3), sda=Pin(2))  # Shin sensor
 sensor_thigh = MPU6050(i2c0, addr=0x68)
 sensor_shin = MPU6050(i2c1, addr=0x68)
 
+
 # --- Helper Functions for Angle Between Y-Z Projections ---
-
-
 def dot_2d(a, b):
     return a[0] * b[0] + a[1] * b[1]
 
