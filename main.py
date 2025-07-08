@@ -4,68 +4,94 @@ import time
 import math
 from machine import Pin, I2C
 from mpu6050 import MPU6050
-from wifi_secrets import ssid, password
+from secrets import ssid, password
 
-# Setup Wi-Fi
+# Connect to Wi-Fi
 wlan = network.WLAN(network.STA_IF)
 wlan.active(True)
 wlan.connect(ssid, password)
-
 print("Connecting to Wi-Fi...", end="")
 while not wlan.isconnected():
     print(".", end="")
     time.sleep(0.5)
-print("\nConnected to", ssid)
-print("IP:", wlan.ifconfig()[0])
+print("\nConnected. IP:", wlan.ifconfig()[0])
 
-# Setup I2C for both sensors
-i2c0 = I2C(0, scl=Pin(1), sda=Pin(0))  # Thigh
-i2c1 = I2C(1, scl=Pin(3), sda=Pin(2))  # Shin
+# Setup I2C buses and sensors
+i2c0 = I2C(0, scl=Pin(1), sda=Pin(0))  # Thigh sensor
+i2c1 = I2C(1, scl=Pin(3), sda=Pin(2))  # Shin sensor
 
 sensor_thigh = MPU6050(i2c0, addr=0x68)
 sensor_shin = MPU6050(i2c1, addr=0x68)
 
+# --- Helper Functions for Angle Between Y-Z Projections ---
 
-def get_pitch(ax, ay, az):
-    return math.degrees(math.atan2(ax, math.sqrt(ay**2 + az**2)))
+
+def dot_2d(a, b):
+    return a[0] * b[0] + a[1] * b[1]
+
+
+def magnitude_2d(v):
+    return math.sqrt(v[0] ** 2 + v[1] ** 2)
+
+
+def angle_between_yz(a1, a2):
+    """Calculate angle between two 2D vectors (ay, az) from each sensor."""
+    vec1 = (a1[1], a1[2])  # (ay, az)
+    vec2 = (a2[1], a2[2])  # (ay, az)
+
+    mag1 = magnitude_2d(vec1)
+    mag2 = magnitude_2d(vec2)
+    if mag1 == 0 or mag2 == 0:
+        return 0.0
+
+    cos_angle = dot_2d(vec1, vec2) / (mag1 * mag2)
+    cos_angle = max(-1.0, min(1.0, cos_angle))  # Clamp to avoid math domain error
+    return math.degrees(math.acos(cos_angle))
 
 
 def read_flexion():
-    ax1, ay1, az1 = sensor_thigh.get_accel()
-    ax2, ay2, az2 = sensor_shin.get_accel()
-    pitch1 = get_pitch(ax1, ay1, az1)
-    pitch2 = get_pitch(ax2, ay2, az2)
-    return round(pitch1, 0), round(pitch2, 0), round(abs(pitch1 - pitch2), 0)
+    a1 = sensor_thigh.get_accel()
+    a2 = sensor_shin.get_accel()
+
+    thigh_pitch = math.degrees(math.atan2(a1[1], a1[2]))
+    shin_pitch = math.degrees(math.atan2(a2[1], a2[2]))
+    flexion_angle = angle_between_yz(a1, a2)
+
+    return round(thigh_pitch), round(shin_pitch), round(flexion_angle)
 
 
-# Setup HTTP server
+# --- Start Web Server ---
 addr = socket.getaddrinfo("0.0.0.0", 80)[0][-1]
 s = socket.socket()
 s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 s.bind(addr)
 s.listen(1)
+print("Web server running on http://{}".format(wlan.ifconfig()[0]))
 
-print("Listening on", addr)
+max_flexion = 0
 
-html = """<!DOCTYPE html>
-<html>
-<head><title>Knee Flexion</title></head>
-<body style="font-family:sans-serif;">
-  <h2>Knee Flexion Angle</h2>
-  <p>Thigh: <b>{}</b> degrees</p>
-  <p>Shin: <b>{}</b> degrees</p>
-  <p style="font-size: 24px;">Flexion: <b>{}</b> degrees</p>
-  <meta http-equiv="refresh" content="1">
-</body>
-</html>"""
-
-# Main server loop
 while True:
     try:
         cl, addr = s.accept()
         request = cl.recv(1024)
-        pitch1, pitch2, flexion = read_flexion()
-        response = html.format(pitch1, pitch2, flexion)
+
+        thigh, shin, flexion = read_flexion()
+
+        if flexion > max_flexion:
+            max_flexion = flexion
+
+        # --- HTML Template ---
+        response = f"""<!DOCTYPE html>
+        <html>
+        <head><title>Knee Flexion</title></head>
+        <body style="font-family: sans-serif; text-align: center; margin-top: 50px;">
+          <h2>Knee Flexion Measurement</h2>
+          <p style="font-size: 24px;">Flexion Angle: <b>{flexion}&deg</b></p>
+          <p style="font-size: 24px;">Max Flexion: <b>{max_flexion}&deg</b></p>
+          <meta http-equiv="refresh" content="0.5">
+        </body>
+        </html>"""
+
         cl.send("HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n")
         cl.send(response)
         cl.close()
