@@ -43,7 +43,7 @@ This project uses two separate I2C buses. Connect the sensors directly to the Pi
 
 | Sensor | Sensor Pin | Pico W Pin | Pico Physical Pin |
 | :--- | :--- | :--- | :--- |
-| **Thigh Sensor** | `VCC` | 3V3 (OUT) | 36 |
+| **Thigh Sensor** | `VCC` | 3V3 (OUT) | 36 (Shared) | 
 | | `GND` | GND | 38 |
 | | `SDA` | **GP0** | 1 |
 | | `SCL` | **GP1** | 2 |
