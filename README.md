@@ -54,7 +54,9 @@ This project uses two separate I2C buses. Connect the sensors directly to the Pi
 
 ### Configuration & Running
 
-1.  **Configure Wi-Fi:** Create a file named `wifi_secrets.py` in the root directory of your Pico. Add your Wi-Fi network name and password to this file.
+1. If you haven't already, flash MicroPython onto your Raspberry Pi Pico W, and upload this repository's files to the root directory of your Pico W.
+   
+2.  **Configure Wi-Fi:** Create a file named `wifi_secrets.py` in the root directory of your Pico. Add your Wi-Fi network name and password to this file.
 
     ```python
     # wifi_secrets.py
@@ -62,4 +64,4 @@ This project uses two separate I2C buses. Connect the sensors directly to the Pi
     password = "YOUR_WIFI_PASSWORD"
     ```
 
-2.  **Run the Project:** With all the project files loaded on the Pico, run `main.py` using your preferred MicroPython IDE (like Thonny). The console will display the IP address once it connects to your network.
+3.  **Run the Project:** With all the project files loaded on the Pico, run `main.py` using your preferred MicroPython IDE (like Thonny). The console will display the IP address once it connects to your network.
